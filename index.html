@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>生日快乐 · 电子贺卡</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f6f0ff;
+    color: #333;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
+
+  /* ---------- 编辑视图 ---------- */
+  #editView { padding: 30px 22px 44px; }
+  #editView h1 { font-size: 30px; line-height: 1.3; }
+  #editView .sub { margin-top: 8px; font-size: 16px; color: #666; line-height: 1.6; }
+  #editView label.lab { display: block; font-size: 17px; font-weight: 700; margin: 24px 0 8px; }
+  #editView input[type="text"], #editView textarea {
+    width: 100%; font-size: 18px; padding: 14px 16px;
+    border: 2px solid #ddd; border-radius: 14px; background: #fff; color: #333;
+    font-family: inherit; line-height: 1.5;
+  }
+  #editView input[type="text"]:focus, #editView textarea:focus { border-color: #7c5cff; outline: none; }
+  #editView textarea { resize: vertical; min-height: 84px; }
+  .themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .theme-opt { display: block; }
+  .theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .theme-box {
+    display: block; border: 2px solid #ddd; border-radius: 14px; background: #fff;
+    padding: 14px 4px 12px; text-align: center; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .theme-box .sw { display: block; font-size: 30px; margin-bottom: 6px; }
+  .theme-opt input:checked + .theme-box { border-color: #7c5cff; background: #efe9ff; box-shadow: 0 0 0 2px rgba(124, 92, 255, .25); }
+  .theme-opt input:focus-visible + .theme-box { outline: 2px solid #7c5cff; outline-offset: 2px; }
+  #genBtn {
+    width: 100%; margin-top: 30px; padding: 17px; font-size: 20px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #7c5cff, #ff5e7a); border: none; border-radius: 16px; cursor: pointer;
+  }
+  #genBtn:active { transform: scale(.98); }
+  .note { text-align: center; color: #888; font-size: 14px; margin-top: 16px; line-height: 1.6; }
+
+  /* ---------- 贺卡视图 ---------- */
+  #cardView { display: none; position: relative; overflow: hidden; min-height: 100vh; min-height: 100dvh; cursor: pointer; }
+  #cardView .bg { position: absolute; inset: 0; }
+  #cardView.theme-purple .bg { background: linear-gradient(160deg, #4c1d95 0%, #7c3aed 55%, #c084fc 100%); }
+  #cardView.theme-pink .bg { background: linear-gradient(160deg, #e11d74 0%, #ff5e8a 55%, #ffb3c8 100%); }
+  #cardView.theme-gold .bg { background: linear-gradient(160deg, #0b1030 0%, #1b2452 55%, #4a3400 100%); }
+  #cardView .bg::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.18), transparent 60%);
+  }
+  #fallers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+  .faller { position: absolute; top: -10%; animation: fall linear infinite; opacity: .95; will-change: transform; }
+  @keyframes fall { to { transform: translateY(125vh) rotate(50deg); } }
+  .card-body { position: relative; z-index: 2; text-align: center; padding: 64px 24px 130px; color: #fff; }
+  #cardView.theme-gold .card-body { color: #ffe9a8; }
+  .hb { font-size: 64px; font-weight: 900; letter-spacing: 4px; line-height: 1.15; text-shadow: 0 4px 24px rgba(0,0,0,.3); }
+  .to { font-size: 30px; font-weight: 800; margin-top: 16px; text-shadow: 0 2px 12px rgba(0,0,0,.25); }
+  .msg-card {
+    margin: 28px auto 0; max-width: 440px; padding: 22px 20px;
+    background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.4);
+    border-radius: 18px; font-size: 21px; line-height: 1.8; word-break: break-word;
+  }
+  .hint { margin-top: 28px; font-size: 15px; opacity: .9; }
+  .copy-btn {
+    margin-top: 24px; padding: 15px 32px; font-size: 19px; font-weight: 800;
+    border: none; border-radius: 999px; background: #fff; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  #cardView.theme-purple .copy-btn { color: #5b21b6; }
+  #cardView.theme-pink .copy-btn { color: #d6336c; }
+  #cardView.theme-gold .copy-btn { color: #8a6d00; background: #ffe9a8; }
+  .copy-btn:active { transform: scale(.97); }
+  .again-btn {
+    position: fixed; right: 16px; bottom: 18px; z-index: 5;
+    padding: 12px 20px; font-size: 16px; font-weight: 700; color: #fff;
+    background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.65);
+    border-radius: 999px; cursor: pointer;
+  }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
+  #toast {
+    position: fixed; left: 50%; bottom: 90px; z-index: 10; pointer-events: none;
+    transform: translateX(-50%) translateY(16px); opacity: 0; transition: opacity .3s, transform .3s;
+    background: rgba(0,0,0,.78); color: #fff; padding: 13px 22px; border-radius: 999px;
+    font-size: 16px; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 编辑视图 -->
+  <div id="editView">
+    <h1>做一张生日贺卡 🎂</h1>
+    <p class="sub">填好名字和祝福，一键生成专属链接，发给 TA 就能打开。</p>
+
+    <label class="lab" for="nameInput">收件人名字</label>
+    <input type="text" id="nameInput" placeholder="比如：小明" maxlength="20" autocomplete="off">
+
+    <label class="lab" for="msgInput">祝福语</label>
+    <textarea id="msgInput" rows="3" maxlength="120">愿你岁岁平安，年年顺遂</textarea>
+
+    <label class="lab">选个风格</label>
+    <div class="themes">
+      <label class="theme-opt">
+        <input type="radio" name="theme" value="purple" checked>
+        <span class="theme-box"><span class="sw">🎈</span>紫色气球</span>
+      </label>
+      <label class="theme-opt">
+        <input type="radio" name="theme" value="pink">
+        <span class="theme-box"><span class="sw">💗</span>粉色爱心</span>
+      </label>
+      <label class="theme-opt">
+        <input type="radio" name="theme" value="gold">
+        <span class="theme-box"><span class="sw">⭐</span>星空金</span>
+      </label>
+    </div>
+
+    <button id="genBtn" type="button">生成贺卡</button>
+    <p class="note">生成的链接打开就是贺卡，不用下载 App，不用注册。</p>
+  </div>
+
+  <!-- 贺卡视图 -->
+  <div id="cardView">
+    <div class="bg"></div>
+    <div id="fallers"></div>
+    <div class="card-body">
+      <div class="hb">生日快乐</div>
+      <div class="to">送给 <span id="cardName"></span></div>
+      <div class="msg-card" id="cardMsg"></div>
+      <p class="hint">👆 点一下屏幕，放彩带 + 播放《生日快乐》</p>
+      <button class="copy-btn" id="copyBtn" type="button">复制分享链接</button>
+    </div>
+    <button class="again-btn" id="againBtn" type="button">再做一张</button>
+  </div>
+
+</div>
+<canvas id="confetti"></canvas>
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var editView = document.getElementById('editView');
+  var cardView = document.getElementById('cardView');
+  var cardName = document.getElementById('cardName');
+  var cardMsg = document.getElementById('cardMsg');
+  var toast = document.getElementById('toast');
+  var confettiCanvas = document.getElementById('confetti');
+  var ctx = confettiCanvas.getContext('2d');
+  var DEFAULT_MSG = '愿你岁岁平安，年年顺遂';
+  var THEMES = { purple: true, pink: true, gold: true };
+  var FALLERS = {
+    purple: ['🎈', '💜', '🎂', '✨', '🎉'],
+    pink: ['💗', '💖', '🎂', '🎈', '✨'],
+    gold: ['⭐', '✨', '🎂', '🥂', '🌟']
+  };
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------- 路由：无参数 = 编辑视图，有参数 = 贺卡视图 ---------- */
+  function parseHash() {
+    var p = new URLSearchParams(location.hash.slice(1));
+    return {
+      to: p.get('to') || '',
+      msg: p.get('msg') || '',
+      theme: p.get('theme') || ''
+    };
+  }
+
+  function showEdit() {
+    cardView.style.display = 'none';
+    editView.style.display = 'block';
+    document.title = '生日快乐 · 电子贺卡';
+  }
+
+  function showCard(params) {
+    var theme = THEMES[params.theme] ? params.theme : 'purple';
+    var name = (params.to || '朋友').trim() || '朋友';
+    var msg = (params.msg || DEFAULT_MSG).trim() || DEFAULT_MSG;
+    cardName.textContent = name;
+    cardMsg.textContent = msg;
+    cardView.className = 'theme-' + theme;
+    editView.style.display = 'none';
+    cardView.style.display = 'block';
+    document.title = '送给' + name + '的生日贺卡';
+    makeFallers(theme);
+  }
+
+  function route() {
+    var params = parseHash();
+    if (params.to) { showCard(params); } else { showEdit(); }
+  }
+
+  /* ---------- 持续飘落 ---------- */
+  function makeFallers(theme) {
+    var layer = document.getElementById('fallers');
+    layer.innerHTML = '';
+    var emojis = FALLERS[theme] || FALLERS.purple;
+    for (var i = 0; i < 26; i++) {
+      var s = document.createElement('span');
+      s.className = 'faller';
+      s.textContent = emojis[i % emojis.length];
+      s.style.left = (Math.random() * 94) + '%';
+      s.style.fontSize = (18 + Math.random() * 22) + 'px';
+      s.style.animationDuration = (6 + Math.random() * 7) + 's';
+      s.style.animationDelay = (-Math.random() * 10) + 's';
+      layer.appendChild(s);
+    }
+  }
+
+  /* ---------- 彩带爆发 ---------- */
+  var parts = [];
+  var rafId = null;
+  function sizeCanvas() {
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+  }
+  sizeCanvas();
+  window.addEventListener('resize', sizeCanvas);
+
+  function burst(x, y) {
+    var colors = ['#ff5e7a', '#ffd166', '#7c5cff', '#4ade80', '#38bdf8', '#f472b6', '#fbbf24'];
+    for (var i = 0; i < 90; i++) {
+      parts.push({
+        x: x, y: y,
+        vx: (Math.random() - 0.5) * 11,
+        vy: Math.random() * -9 - 3,
+        g: 0.28,
+        size: Math.random() * 7 + 4,
+        color: colors[i % colors.length],
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.3,
+        life: 1
+      });
+    }
+    if (!rafId) { tick(); }
+  }
+  function tick() {
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    parts = parts.filter(function (p) { return p.life > 0 && p.y < confettiCanvas.height + 20; });
+    parts.forEach(function (p) {
+      p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.99; p.rot += p.vr; p.life -= 0.008;
+      ctx.save();
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    });
+    if (parts.length) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    }
+  }
+
+  /* ---------- 《生日快乐》旋律（Web Audio API 现场演奏） ---------- */
+  var NOTE = { G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99 };
+  var MELODY = [
+    ['G4', 0.75], ['G4', 0.25], ['A4', 1], ['G4', 1], ['C5', 1], ['B4', 1.75],
+    ['G4', 0.75], ['G4', 0.25], ['A4', 1], ['G4', 1], ['D5', 1], ['C5', 1.75],
+    ['G4', 0.75], ['G4', 0.25], ['G5', 1], ['E5', 1], ['C5', 1], ['B4', 1], ['A4', 1.75],
+    ['F5', 0.75], ['F5', 0.25], ['E5', 1], ['C5', 1], ['D5', 1], ['C5', 1.75]
+  ];
+  var audioCtx = null;
+  var musicPlaying = false;
+  function playMelody() {
+    if (musicPlaying) { return; }
+    try {
+      if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { return; }
+    musicPlaying = true;
+    var beat = 0.38;
+    var t = audioCtx.currentTime + 0.05;
+    MELODY.forEach(function (pair) {
+      var freq = NOTE[pair[0]];
+      var dur = pair[1] * beat;
+      var osc = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.25, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + dur);
+      t += dur;
+    });
+    var totalMs = (t - audioCtx.currentTime) * 1000;
+    setTimeout(function () { musicPlaying = false; }, totalMs + 150);
+  }
+
+  /* ---------- 交互 ---------- */
+  cardView.addEventListener('click', function (e) {
+    burst(e.clientX, e.clientY);
+    playMelody();
+  });
+
+  document.getElementById('genBtn').addEventListener('click', function () {
+    var to = document.getElementById('nameInput').value.trim() || '朋友';
+    var msg = document.getElementById('msgInput').value.trim() || DEFAULT_MSG;
+    var themeEl = document.querySelector('input[name="theme"]:checked');
+    var theme = themeEl ? themeEl.value : 'purple';
+    var h = '#to=' + encodeURIComponent(to) +
+            '&msg=' + encodeURIComponent(msg) +
+            '&theme=' + encodeURIComponent(theme);
+    if (location.hash === h) { route(); } else { location.hash = h; }
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var url = location.href;
+    function done() { showToast('链接已复制，快发给 TA 吧 🎉'); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); }
+      catch (err) { showToast('复制失败，请长按地址栏手动复制'); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  document.getElementById('againBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (location.hash) {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    showEdit();
+  });
+
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
